@@ -1,0 +1,29 @@
+[package]
+name = "primascope"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Oscilloscope with sidechain, capture, compressor preview, ruler and level lines"
+
+[workspace]
+members = ["xtask"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["assert_process_allocs"] }
+nih_plug_egui = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+rtrb = "0.3"
+rustfft = "6"
+serde = { version = "1", features = ["derive"] }
+png = "0.17"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = "none"

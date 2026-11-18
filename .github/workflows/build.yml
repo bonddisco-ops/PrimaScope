@@ -1,0 +1,62 @@
+name: Build PrimaScope
+
+on:
+  push:
+    branches: ['**']
+    tags: ['*']
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux,           os: ubuntu-22.04,   cross-target: '' }
+          - { name: macos-universal, os: macos-latest,   cross-target: x86_64-apple-darwin }
+          - { name: windows,         os: windows-latest, cross-target: '' }
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl-dev libjack-dev libx11-xcb-dev libxcb1-dev libxcb-dri2-0-dev libxcb-icccm4-dev libxcursor-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.cross-target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      - name: Run tests
+        if: "!startsWith(matrix.os, 'macos')"
+        run: cargo test --lib --release
+
+      - name: Bundle
+        run: |
+          if [[ -n "${{ matrix.cross-target }}" ]]; then
+            cargo xtask bundle-universal primascope --release
+          else
+            cargo xtask bundle primascope --release
+          fi
+
+      - name: Collect
+        run: |
+          mkdir -p out/PrimaScope-${{ matrix.name }}
+          cp -r target/bundled/* out/PrimaScope-${{ matrix.name }}/
+          cp README.md out/PrimaScope-${{ matrix.name }}/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PrimaScope-${{ matrix.name }}
+          path: out/
